@@ -85,6 +85,6 @@ cp -r node/public/. php/public/
 
 ## Licence
 
-Aucune licence n'est encore définie pour ce dépôt. Ajoutez un fichier `LICENSE` (par exemple MIT) avant de le publier si vous voulez autoriser sa réutilisation.
+Distribué sous licence **MIT** : vous pouvez utiliser, modifier et redistribuer le code librement, à condition de conserver la mention de copyright. Voir le fichier [LICENSE](LICENSE).
 
-La bibliothèque incluse dans `public/vendor/qrcode.js` (Kazuhiko Arase) est sous licence MIT.
+La bibliothèque incluse dans `public/vendor/qrcode.js` (Kazuhiko Arase) est elle aussi sous licence MIT.

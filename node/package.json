@@ -2,6 +2,7 @@
   "name": "espace-documents",
   "version": "3.0.0",
   "description": "Drive auto-hébergé avec édition OnlyOffice",
+  "license": "MIT",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js"
