@@ -1,11 +1,12 @@
 # Stack Portainer — Espace Documents (drive + OnlyOffice existant)
-# Dans Portainer : Stacks > Add stack > Repository (ou Upload) avec ce dossier,
+# Dans Portainer : Stacks > Add stack > Web editor (collez ce fichier),
 # puis renseignez les variables dans « Environment variables ».
 
 services:
   drive:
-    build: .
-    image: espace-documents:latest
+    # Image publiée automatiquement par GitHub Actions.
+    # Pour construire localement à la place : remplacez cette ligne par « build: . »
+    image: ghcr.io/xeros59/drive-ticeconnect:latest
     container_name: espace-documents
     restart: unless-stopped
     ports:

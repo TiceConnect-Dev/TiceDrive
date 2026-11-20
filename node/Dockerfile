@@ -1,5 +1,8 @@
 FROM node:20-bookworm-slim
 
+LABEL org.opencontainers.image.source="https://github.com/Xeros59/Drive---Ticeconnect" \
+      org.opencontainers.image.licenses="MIT"
+
 ENV NODE_ENV=production \
     PORT=3000 \
     DATA_DIR=/data

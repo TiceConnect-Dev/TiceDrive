@@ -9,20 +9,45 @@ Pour un hébergement PHP classique, utilisez plutôt la [version PHP](../php/).
 - Un nom de domaine et un reverse proxy HTTPS (Nginx Proxy Manager, Traefik, Caddy, Nginx…)
 - Facultatif : un serveur **OnlyOffice Docs** pour l'édition en ligne
 
-## Installation en ligne de commande
+## Image prête à l'emploi (recommandé)
 
+À chaque modification du dossier `node/` sur la branche `main`, une image est construite automatiquement par GitHub Actions et publiée pour **amd64 et arm64** (PC, serveur, Raspberry Pi) :
+
+```
+ghcr.io/xeros59/drive-ticeconnect:latest
+```
+
+Les étiquettes disponibles sont `latest` (dernière version de `main`), `x.y.z` et `x.y` (versions publiées avec un tag `vx.y.z`) et `sha-xxxxxxx` (un commit précis).
+
+### Avec Portainer
+1. Allez dans **Stacks**, puis **Add stack**, puis **Web editor**, et collez le fichier [`docker-compose.yml`](docker-compose.yml).
+2. Renseignez les variables dans **Environment variables** (voir plus bas).
+3. Cliquez sur **Deploy the stack**.
+
+**Mettre à jour** : ouvrez la stack, cliquez sur **Update the stack** et cochez **Re-pull image and redeploy**. Les données ne bougent pas : elles sont dans le volume `drive_data`.
+
+### En ligne de commande
 ```bash
 cd node
 cp .env.example .env          # puis modifiez les valeurs
-docker build -t espace-documents:latest .
-docker compose up -d
+docker compose pull && docker compose up -d
 ```
+
+## Construire l'image soi-même
+
+### En ligne de commande
+
+```bash
+cd node
+docker build -t espace-documents:latest .
+```
+Dans `docker-compose.yml`, remplacez alors la ligne `image:` par `build: .` (ou par `image: espace-documents:latest`).
 
 Le drive écoute sur le port `8290` de l'hôte (variable `HOST_PORT`). Faites pointer votre reverse proxy dessus, avec HTTPS.
 
-## Installation avec Portainer
+### Avec Portainer
 
-### 1. Construire l'image
+#### 1. Construire l'image
 Allez dans **Images**, puis **Build a new image** :
 - **Name** : `espace-documents:latest`
 - **Build method** :
@@ -33,7 +58,7 @@ Allez dans **Images**, puis **Build a new image** :
   - ou *URL* : l'adresse de votre dépôt Git, avec `node` comme dossier de contexte
 - Cliquez sur **Build the image**.
 
-### 2. Créer la stack
+#### 2. Créer la stack
 Allez dans **Stacks**, puis **Add stack**, puis **Web editor** :
 
 ```yaml
@@ -60,7 +85,7 @@ volumes:
 
 Renseignez les variables dans **Environment variables**, puis cliquez sur **Deploy the stack**.
 
-### Mettre à jour
+#### Mettre à jour
 Reconstruisez l'image sous le même nom (`espace-documents:latest`), puis, dans la stack, cliquez sur **Update the stack**. Les données ne bougent pas : elles sont dans le volume `drive_data`.
 
 ## Variables d'environnement
