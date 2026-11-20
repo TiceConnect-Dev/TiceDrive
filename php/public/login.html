@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion — Espace Documents</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<script src="common.js"></script>
+</head>
+<body>
+<div class="page">
+  <header class="hd"><div class="hd-in">
+    <a class="brand" href="./"><div class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
+    <div><strong class="appName">Espace Documents</strong><small>Stockage et partage de fichiers</small></div></a>
+  </div></header>
+  <main>
+    <div class="panel">
+      <h1 id="h">Connexion</h1>
+      <p class="lead" id="lead">Connectez-vous pour accéder à vos documents.</p>
+      <div id="msg"></div>
+      <form id="f" novalidate>
+        <div class="field" id="fName" hidden><label for="name">Nom complet</label><input id="name" autocomplete="name"></div>
+        <div class="field"><label for="email">Adresse e-mail</label><input id="email" type="email" autocomplete="username" autofocus></div>
+        <div class="field"><label for="pw">Mot de passe</label><input id="pw" type="password" autocomplete="current-password"><div class="hint" id="pwHint" hidden>8 caractères minimum.</div></div>
+        <label class="check" style="margin:-4px 0 20px;font-size:14px"><input type="checkbox" id="show"> Afficher le mot de passe</label>
+        <button class="btn btn-primary" style="width:100%" id="go">Se connecter</button>
+      </form>
+      <form id="f2" novalidate hidden>
+        <div class="field"><label for="code">Code de vérification</label><input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="9" placeholder="123456" style="font-size:22px;letter-spacing:.25em;text-align:center"><div class="hint">Code à 6 chiffres de votre application d'authentification, ou un code de secours (xxxx-xxxx).</div></div>
+        <button class="btn btn-primary" style="width:100%" id="go2">Valider</button>
+        <p style="margin-top:16px"><button type="button" class="btn-link" id="back2">‹ Revenir à la connexion</button></p>
+      </form>
+      <p id="swap" style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);display:none"></p>
+    </div>
+  </main>
+  <footer class="ft"><span class="appName">Espace Documents</span><span>Les données sont hébergées sur le serveur de votre organisation.</span></footer>
+</div>
+<script>
+let mode = 'login', cfg = {}, ticket = null;
+const next = new URLSearchParams(location.search).get('next') || '';
+const goNext = () => { location.href = next.startsWith('/') && !next.startsWith('//') ? next : './'; };
+function setMode(m) {
+  mode = m;
+  const reg = m === 'register';
+  $('#h').textContent = cfg.firstRun ? 'Première configuration' : reg ? 'Créer un compte' : 'Connexion';
+  $('#lead').textContent = cfg.firstRun ? 'Créez le compte administrateur de cette instance.' : reg ? 'Renseignez vos informations pour créer votre espace.' : 'Connectez-vous pour accéder à vos documents.';
+  $('#fName').hidden = !reg; $('#pwHint').hidden = !reg;
+  $('#pw').autocomplete = reg ? 'new-password' : 'current-password';
+  $('#go').textContent = reg ? 'Créer le compte' : 'Se connecter';
+  $('#swap').style.display = cfg.signup && !cfg.firstRun ? '' : 'none';
+  $('#swap').innerHTML = reg ? 'Déjà un compte ? <button class="btn-link" id="sw">Se connecter</button>' : 'Pas encore de compte ? <button class="btn-link" id="sw">Créer un compte</button>';
+  $('#sw') && ($('#sw').onclick = () => setMode(reg ? 'login' : 'register'));
+  $('#msg').innerHTML = '';
+  (reg ? $('#name') : $('#email')).focus();
+}
+$('#show').onchange = e => $('#pw').type = e.target.checked ? 'text' : 'password';
+$('#f').onsubmit = async e => {
+  e.preventDefault();
+  $('#go').disabled = true;
+  try {
+    const r = await api(mode === 'register' ? 'api/register' : 'api/login', { body: { email: $('#email').value, password: $('#pw').value, name: $('#name').value }, no401: true });
+    if (r.need2fa) {
+      ticket = r.ticket;
+      $('#f').hidden = true; $('#f2').hidden = false; $('#swap').style.display = 'none'; $('#msg').innerHTML = '';
+      $('#h').textContent = 'Double authentification'; $('#lead').textContent = 'Saisissez le code affiché par votre application.';
+      $('#code').value = ''; $('#code').focus(); $('#go').disabled = false;
+      return;
+    }
+    goNext();
+  } catch (err) { $('#msg').innerHTML = `<div class="alert err" style="margin-bottom:20px">${esc(err.message)}</div>`; $('#go').disabled = false; }
+};
+$('#f2').onsubmit = async e => {
+  e.preventDefault();
+  $('#go2').disabled = true;
+  try { await api('api/login/2fa', { body: { ticket, code: $('#code').value }, no401: true }); goNext(); }
+  catch (err) { $('#msg').innerHTML = `<div class="alert err" style="margin-bottom:20px">${esc(err.message)}</div>`; $('#go2').disabled = false; $('#code').select(); if (/Délai/.test(err.message)) $('#back2').click(); }
+};
+$('#code').oninput = e => { const v = e.target.value.replace(/\s/g, ''); if (/^\d{6}$/.test(v)) $('#f2').requestSubmit(); };
+$('#back2').onclick = () => { $('#f2').hidden = true; $('#f').hidden = false; $('#pw').value = ''; setMode('login'); };
+api('api/config').then(c => {
+  cfg = c;
+  $$('.appName').forEach(x => x.textContent = c.appName); document.title = 'Connexion — ' + c.appName;
+  setMode(c.firstRun ? 'register' : 'login');
+});
+</script>
+</body>
+</html>

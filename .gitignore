@@ -1,0 +1,16 @@
+# Dépendances et données locales
+node_modules/
+node/data/
+php/data/*
+!php/data/.htaccess
+!php/data/.gitkeep
+
+# Configuration contenant des secrets
+.env
+php/config.php
+
+# Divers
+*.zip
+*.tar.gz
+.DS_Store
+Thumbs.db

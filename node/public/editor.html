@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Éditeur — Espace Documents</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<script src="common.js"></script>
+<style>
+  html,body{height:100%;overflow:hidden}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column}
+  #editor{flex:1}
+  #state{position:absolute;inset:0;display:grid;place-items:center;background:var(--bg-alt);padding:20px}
+  #state .panel{text-align:center}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="editor"></div></div>
+<div id="state"><div class="panel"><span class="spin"></span><p style="margin-top:16px" class="sub">Ouverture du document…</p></div></div>
+<script>
+(async () => {
+  const m = location.pathname.match(/\/(?:s\/([^/]+)\/)?edit\/([^/]+)\/?$/);
+  const share = m && m[1], id = m && m[2];
+  const params = new URLSearchParams(location.search);
+  const fail = (msg, back) => {
+    $('#state').innerHTML = `<div class="panel"><h1 style="font-size:24px">Impossible d'ouvrir le document</h1><p class="lead" style="margin-top:12px">${esc(msg)}</p><a class="btn btn-primary" href="${back}">Retour</a></div>`;
+    $('#state').style.display = '';
+  };
+  try {
+    let name = params.get('name');
+    if (share && !name) { try { name = sessionStorage.getItem('ed-guest') || ''; } catch (e) { } }
+    const url = share ? `api/s/${share}/oo/${id}?name=${encodeURIComponent(name || 'Invité')}` : `api/oo/${id}${params.get('mode') === 'view' ? '?mode=view' : ''}`;
+    const r = await api(url);
+    document.title = r.name;
+    await new Promise((ok, ko) => {
+      const s = document.createElement('script');
+      s.src = r.ooUrl + '/web-apps/apps/api/documents/api.js';
+      s.onload = ok; s.onerror = () => ko(new Error("Le serveur OnlyOffice ne répond pas (" + r.ooUrl + ")."));
+      document.head.appendChild(s);
+    });
+    const cfg = r.config;
+    cfg.width = '100%'; cfg.height = '100%';
+    cfg.type = matchMedia('(max-width:820px)').matches ? 'mobile' : 'desktop';
+    cfg.events = {
+      onAppReady: () => { $('#state').style.display = 'none'; },
+      onError: e => console.error('OnlyOffice', e),
+      onRequestClose: () => { location.href = share ? `s/${share}` : './'; },
+    };
+    // Le jeton couvre la config d'origine ; les champs ajoutés ci-dessus (taille, type, events) ne sont pas signés, OnlyOffice les accepte.
+    new DocsAPI.DocEditor('editor', cfg);
+    setTimeout(() => { $('#state').style.display = 'none'; }, 15000);
+  } catch (e) {
+    if (e.data && e.data.needPassword && share) return (location.href = `s/${share}`);
+    fail(e.message, share ? `s/${share}` : './');
+  }
+})();
+</script>
+</body>
+</html>

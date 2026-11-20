@@ -1,0 +1,37 @@
+# Stack Portainer — Espace Documents (drive + OnlyOffice existant)
+# Dans Portainer : Stacks > Add stack > Repository (ou Upload) avec ce dossier,
+# puis renseignez les variables dans « Environment variables ».
+
+services:
+  drive:
+    build: .
+    image: espace-documents:latest
+    container_name: espace-documents
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8290}:3000"
+    environment:
+      APP_NAME: ${APP_NAME:-Espace Documents}
+      # Adresse publique du drive (celle que tapent les utilisateurs)
+      APP_URL: ${APP_URL:-https://drive.exemple.fr}
+      # Serveur OnlyOffice Docs (facultatif)
+      ONLYOFFICE_URL: ${ONLYOFFICE_URL}
+      ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET}
+      # Facultatif : adresse par laquelle le conteneur OnlyOffice joint le drive
+      # (ex. http://espace-documents:3000 si les deux sont sur le même réseau Docker)
+      APP_INTERNAL_URL: ${APP_INTERNAL_URL:-}
+      # Secret de session (mettez une longue chaîne aléatoire)
+      SECRET: ${SECRET}
+      # Premier compte administrateur (créé au démarrage s'il n'existe pas)
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      DEFAULT_QUOTA: ${DEFAULT_QUOTA:-10G}
+      MAX_UPLOAD: ${MAX_UPLOAD:-4G}
+      MAX_VERSIONS: ${MAX_VERSIONS:-20}
+      TRASH_DAYS: ${TRASH_DAYS:-30}
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-false}
+    volumes:
+      - drive_data:/data
+
+volumes:
+  drive_data:

@@ -1,0 +1,38 @@
+# Exemple de configuration Nginx + PHP-FPM pour Espace Documents (version PHP)
+# Installation à la racine du domaine. Pour un sous-dossier, voir la note en bas.
+
+server {
+    listen 443 ssl http2;
+    server_name drive.exemple.fr;
+    root /var/www/espace-documents;           # dossier contenant index.php
+    index index.php;
+
+    client_max_body_size 70M;                 # doit être >= post_max_size de PHP
+    fastcgi_read_timeout 300;
+
+    # Dossiers internes interdits
+    location ~ ^/(app|data|templates)(/|$) { deny all; return 404; }
+    location ~ ^/config(\.sample)?\.php$     { deny all; return 404; }
+    location ~ ^/public/.+\.html$            { deny all; return 404; }
+
+    # Fichiers de l'interface
+    location ~ ^/((vendor/)?[A-Za-z0-9_.-]+\.(css|js|svg|png|webmanifest))$ {
+        try_files /public/$1 /index.php$is_args$args;
+    }
+
+    # Tout le reste (pages, API, WebDAV, OnlyOffice) passe par index.php
+    location / {
+        try_files /index.php$is_args$args =404;
+    }
+
+    location = /index.php {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param HTTP_AUTHORIZATION $http_authorization;   # WebDAV
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+    }
+}
+
+# Sous-dossier (ex. https://exemple.fr/drive/) : préfixez les « location » par /drive,
+# utilisez « try_files /drive/index.php… » et « fastcgi_param SCRIPT_NAME /drive/index.php; ».

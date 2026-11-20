@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partage — Espace Documents</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app.css">
+<script src="common.js"></script>
+<style>
+  .drop-big{border:2px dashed var(--border-strong);padding:48px 20px;text-align:center;background:var(--bg-alt);cursor:pointer;transition:.15s}
+  .drop-big:hover,.drop-big.over{border-color:var(--blue);background:var(--blue-soft)}
+  .file-hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+  .file-hero{display:block}
+  .file-hero .prev{width:100%;height:auto;min-height:240px;max-height:calc(100vh - 260px)}
+  .file-hero .prev img,.file-hero .prev video{max-height:calc(100vh - 260px)}
+  .file-hero iframe{width:100%;height:calc(100vh - 250px);min-height:420px;border:none;background:#fff;display:block}
+  #txt{max-height:calc(100vh - 260px)!important}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="hd"><div class="hd-in">
+    <span class="brand"><div class="logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg></div>
+    <div><strong class="appName">Espace Documents</strong><small>Partage de fichiers</small></div></span>
+    <div class="hd-tools" style="margin-left:auto"><a class="btn btn-tertiary btn-sm" href="login">Se connecter</a></div>
+  </div></header>
+  <main><div class="panel wide" id="root"><div class="loading"><span class="spin"></span></div></div></main>
+  <footer class="ft"><span class="appName">Espace Documents</span><span>Ce lien vous a été transmis par un utilisateur. Ne communiquez pas vos mots de passe via cette page.</span></footer>
+</div>
+<script>
+const token = (location.pathname.match(/\/s\/([^/]+)/) || [])[1];
+const R = $('#root');
+let info, folder = null;
+const guestName = () => { try { return sessionStorage.getItem('ed-guest') || ''; } catch (e) { return ''; } };
+const setGuest = n => { try { sessionStorage.setItem('ed-guest', n); } catch (e) { } };
+const isOO = it => info.onlyoffice && it.type === 'file' && info.onlyoffice.view.includes(it.ext);
+const MODE_TXT = { view: 'Lecture seule', edit: 'Lecture et modification', upload: 'Dépôt de fichiers' };
+
+async function start() {
+  try { info = await api('api/s/' + token, { no401: true }); }
+  catch (e) {
+    if (e.data?.needPassword) return askPassword();
+    return R.innerHTML = `<div class="empty"><div class="ill">${SVG(P.link, 56)}</div><h2>Lien indisponible</h2><p>${esc(e.message)}</p></div>`;
+  }
+  $$('.appName').forEach(x => x.textContent = info.appName);
+  Uploader.chunk = info.chunkSize || 0;
+  document.title = info.item.name + ' — ' + info.appName;
+  if (info.mode === 'upload') return uploadOnly();
+  if (info.item.type === 'folder') return showFolder(info.item.id);
+  showFile(info.item);
+}
+function askPassword() {
+  R.style.maxWidth = '560px';
+  R.innerHTML = `<h1>${SVG(P.lock, 28)} Lien protégé</h1><p class="lead">Ce partage est protégé par un mot de passe.</p><div id="pe"></div>
+    <form id="pf"><div class="field"><label for="pw">Mot de passe</label><input id="pw" type="password" autofocus></div><button class="btn btn-primary">Accéder</button></form>`;
+  $('#pw').focus();
+  $('#pf').onsubmit = async e => {
+    e.preventDefault();
+    try { await api(`api/s/${token}/unlock`, { body: { password: $('#pw').value }, no401: true }); R.style.maxWidth = ''; start(); }
+    catch (err) { $('#pe').innerHTML = `<div class="alert err" style="margin-bottom:16px">${esc(err.message)}</div>`; }
+  };
+}
+const head = (it, extra = '') => `<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:20px">${icon(it, 48)}<div style="flex:1;min-width:200px"><h1 style="font-size:26px;word-break:break-word">${esc(it.name)}</h1><p class="sub" style="white-space:normal">Partagé par <b>${esc(info.owner)}</b> · <span class="tag ${info.mode === 'view' ? 'grey' : info.mode === 'upload' ? 'green' : ''}">${MODE_TXT[info.mode]}</span></p></div>${extra}</div>`;
+
+/* --- Mode dépôt --- */
+function uploadOnly() {
+  R.innerHTML = head(info.item) + `<div class="field" style="max-width:420px"><label for="gn">Votre nom (facultatif)</label><input id="gn" value="${esc(guestName())}" placeholder="Pour que le destinataire sache qui a déposé"></div>
+    <div class="drop-big" id="db" tabindex="0" role="button">${SVG(P.cloud, 56)}<h2 style="font-size:20px;margin:10px 0 4px">Glissez-déposez vos fichiers ici</h2><p class="sub">ou cliquez pour les choisir — vous ne verrez pas le contenu du dossier</p></div>
+    <input type="file" id="fi" multiple hidden><ul class="plist" id="sent" style="margin-top:16px"></ul>`;
+  const db = $('#db');
+  db.onclick = () => $('#fi').click();
+  db.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#fi').click(); } };
+  db.ondragover = e => { e.preventDefault(); db.classList.add('over'); };
+  db.ondragleave = () => db.classList.remove('over');
+  db.ondrop = async e => { e.preventDefault(); db.classList.remove('over'); send(await filesFromDrop(e.dataTransfer), info.item.id); };
+  $('#fi').onchange = e => { send([...e.target.files].map(f => ({ file: f, path: f.name })), info.item.id); e.target.value = ''; };
+  $('#gn').onchange = e => setGuest(e.target.value.trim());
+}
+function send(list, fid, after) {
+  if (!list.length) return;
+  const name = ($('#gn')?.value || guestName() || 'Invité').trim();
+  Uploader.add(list, () => `api/s/${token}/upload?folder=${fid}&name=${encodeURIComponent(name)}`, after || (() => {
+    $('#sent') && ($('#sent').innerHTML = list.map(f => `<li>${icon({ type: 'file', name: f.file.name }, 24)}<div><b>${esc(f.path)}</b><div class="sub">${fmtSize(f.file.size)}</div></div><span class="tag green">${SVG(P.check, 12)} Déposé</span></li>`).join('') + $('#sent').innerHTML);
+    toast('Fichiers déposés', 'ok');
+  }));
+}
+
+/* --- Dossier --- */
+async function showFolder(fid) {
+  let r;
+  try { r = await api(`api/s/${token}/list?folder=${fid}`, { no401: true }); }
+  catch (e) { if (e.data?.needPassword) return askPassword(); return toast(e.message, 'err'); }
+  folder = r.folder;
+  const can = info.mode === 'edit';
+  const items = r.items.sort((a, b) => (a.type !== b.type ? (a.type === 'folder' ? -1 : 1) : a.name.localeCompare(b.name, 'fr', { numeric: true })));
+  R.innerHTML = head(info.item, `<div style="display:flex;gap:8px;flex-wrap:wrap">${can ? `<button class="btn btn-secondary" id="up">${SVG(P.upload, 18)}Envoyer</button><button class="btn btn-tertiary" id="nf">${SVG(P.newFolder, 18)}Dossier</button>` : ''}<a class="btn btn-primary" href="api/s/${token}/raw/${folder.id}">${SVG(P.dl, 18)}Tout télécharger</a></div>`) +
+    (r.path.length > 1 ? `<nav class="crumbs" style="margin-bottom:12px"><ol>${r.path.map(p => `<li><a data-f="${p.id}">${esc(p.name)}</a></li>`).join('')}</ol></nav>` : '') +
+    (items.length ? `<table class="list"><thead><tr><th>Nom</th><th class="hide-m c-mod">Modifié</th><th class="hide-m c-size">Taille</th><th style="width:100px"></th></tr></thead><tbody>${items.map(it => `<tr class="row" data-id="${it.id}"><td class="n"><div>${icon(it, 26)}<div class="name">${esc(it.name)}</div></div></td><td class="hide-m sub">${fmtDate(it.modified)}</td><td class="hide-m sub">${it.type === 'folder' ? it.children + ' élément(s)' : fmtSize(it.size)}</td><td style="white-space:nowrap">${isOO(it) ? `<button class="btn-icon" data-oo="${it.id}" title="Ouvrir dans OnlyOffice">${SVG(can && info.onlyoffice.edit.includes(it.ext) ? P.edit : P.eye, 18)}</button>` : ''}<a class="btn-icon" href="api/s/${token}/raw/${it.id}${it.type === 'file' ? '?dl=1' : ''}" title="Télécharger">${SVG(P.dl, 18)}</a></td></tr>`).join('')}</tbody></table>`
+      : `<div class="empty"><div class="ill">${SVG(P.folder, 56)}</div><h2>Dossier vide</h2>${can ? '<p>Glissez-déposez des fichiers ici pour les ajouter.</p>' : ''}</div>`) +
+    (can ? '<input type="file" id="fi" multiple hidden>' : '');
+  $$('[data-f]', R).forEach(a => a.onclick = () => showFolder(a.dataset.f));
+  $$('tr[data-id]', R).forEach(tr => tr.onclick = e => {
+    if (e.target.closest('a,button')) return;
+    const it = items.find(i => i.id === tr.dataset.id);
+    it.type === 'folder' ? showFolder(it.id) : isOO(it) && !['pdf'].includes(it.ext) ? openOO(it) : showFile(it, true);
+  });
+  $$('[data-oo]', R).forEach(b => b.onclick = () => openOO(items.find(i => i.id === b.dataset.oo)));
+  if (can) {
+    $('#up').onclick = () => $('#fi').click();
+    $('#fi').onchange = e => { send([...e.target.files].map(f => ({ file: f, path: f.name })), folder.id, () => showFolder(folder.id)); e.target.value = ''; };
+    $('#nf').onclick = () => inputDlg('Nouveau dossier', 'Nom du dossier', 'Nouveau dossier', 'Créer', async v => { await api(`api/s/${token}/folders?name=${encodeURIComponent(guestName())}`, { body: { parent: folder.id, name: v } }); showFolder(folder.id); }, { name: true });
+    R.ondragover = e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); R.style.outline = '3px dashed var(--blue)'; } };
+    R.ondragleave = e => { if (!R.contains(e.relatedTarget)) R.style.outline = ''; };
+    R.ondrop = async e => { e.preventDefault(); R.style.outline = ''; send(await filesFromDrop(e.dataTransfer), folder.id, () => showFolder(folder.id)); };
+  }
+}
+function openOO(it) {
+  const go = n => { setGuest(n); location.href = `s/${token}/edit/${it.id}?name=${encodeURIComponent(n)}`; };
+  if (info.mode !== 'edit' || guestName()) return go(guestName() || 'Invité');
+  inputDlg('Votre nom', 'Nom affiché aux autres personnes qui modifient le document', '', 'Ouvrir le document', async v => go(v || 'Invité'), { allowEmpty: true });
+}
+
+/* --- Fichier --- */
+function showFile(it, inFolder) {
+  const k = kind(it), u = `api/s/${token}/raw/${it.id}`;
+  let body = '';
+  if (k === 'image') body = `<div class="prev"><img src="${u}" alt="${esc(it.name)}"></div>`;
+  else if (k === 'video') body = `<div class="prev"><video src="${u}" controls style="max-width:100%"></video></div>`;
+  else if (k === 'audio') body = `<audio src="${u}" controls style="width:100%"></audio>`;
+  else if (k === 'pdf') body = `<iframe src="${u}" title="${esc(it.name)}"></iframe>`;
+  else if (k === 'text') body = `<pre id="txt" style="background:var(--bg-alt);padding:20px;max-height:65vh;overflow:auto;white-space:pre-wrap;font:14px ui-monospace,Consolas,monospace;width:100%"></pre>`;
+  else body = `<div class="prev" style="min-height:200px">${icon(it, 96)}</div>`;
+  R.innerHTML = (inFolder ? `<p style="margin-bottom:16px"><button class="btn btn-tertiary btn-sm" id="back">‹ Retour au dossier</button></p>` : '') +
+    head(it, `<div style="display:flex;gap:8px;flex-wrap:wrap">${isOO(it) ? `<button class="btn btn-secondary" id="oo">${SVG(info.mode === 'edit' && info.onlyoffice.edit.includes(it.ext) ? P.edit : P.open, 18)}${info.mode === 'edit' && info.onlyoffice.edit.includes(it.ext) ? 'Modifier' : 'Ouvrir'} dans OnlyOffice</button>` : ''}<a class="btn btn-primary" href="${u}?dl=1">${SVG(P.dl, 18)}Télécharger · ${fmtSize(it.size)}</a></div>`) +
+    `<div class="file-hero">${body}</div>`;
+  $('#back') && ($('#back').onclick = () => showFolder(folder.id));
+  $('#oo') && ($('#oo').onclick = () => openOO(it));
+  if (k === 'text') fetch(u).then(r => r.text()).then(t => $('#txt').textContent = t.slice(0, 400000));
+}
+start();
+</script>
+</body>
+</html>

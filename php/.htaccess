@@ -1,0 +1,36 @@
+# Espace Documents — Apache / LiteSpeed (OVH, o2switch, Hostinger, IONOS…)
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Transmet l'en-tête Authorization à PHP (WebDAV, en mode CGI/FPM)
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+  # Dossiers internes interdits
+  RewriteRule ^(app|data|templates)(/|$) - [F,L]
+  RewriteRule ^public/.+\.html$ - [F,L]
+  RewriteRule ^config(\.sample)?\.php$ - [F,L]
+
+  # Fichiers statiques de l'interface (servis directement par le serveur web)
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^public/ - [L]
+  RewriteRule ^((vendor/)?[A-Za-z0-9_.-]+\.(css|js|svg|png|webmanifest))$ public/$1 [L]
+
+  # Tout le reste passe par index.php
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options nosniff
+</IfModule>
+
+# Envois de fichiers : ces valeurs ne s'appliquent qu'avec mod_php (sinon voir .user.ini)
+<IfModule mod_php.c>
+  php_value upload_max_filesize 64M
+  php_value post_max_size 70M
+  php_value max_execution_time 300
+  php_value memory_limit 256M
+</IfModule>
