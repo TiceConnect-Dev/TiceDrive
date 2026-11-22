@@ -6,7 +6,7 @@ services:
   drive:
     # Image publiée automatiquement par GitHub Actions.
     # Pour construire localement à la place : remplacez cette ligne par « build: . »
-    image: ghcr.io/xeros59/drive-ticeconnect:latest
+    image: ghcr.io/ticeconnect-dev/drive-ticeconnect:latest
     container_name: espace-documents
     restart: unless-stopped
     ports:

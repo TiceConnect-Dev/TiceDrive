@@ -1,6 +1,6 @@
 FROM node:20-bookworm-slim
 
-LABEL org.opencontainers.image.source="https://github.com/Xeros59/TiceDrive" \
+LABEL org.opencontainers.image.source="https://github.com/TiceConnect-Dev/TiceDrive" \
       org.opencontainers.image.licenses="MIT"
 
 ENV NODE_ENV=production \
