@@ -1,6 +1,6 @@
 # Drive Ticeconnect
 
-[![Image Docker](https://github.com/Xeros59/TiceDrive/actions/workflows/docker.yml/badge.svg)](https://github.com/Xeros59/TiceDrive/actions/workflows/docker.yml)
+[![Image Docker](https://github.com/TiceConnect-Dev/TiceDrive/actions/workflows/docker.yml/badge.svg)](https://github.com/TiceConnect-Dev/TiceDrive/actions/workflows/docker.yml)
 [![Licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
 **Espace Documents** : drive web auto-hébergé, en français, au style institutionnel sobre : stockage, partage et édition de documents en ligne. Il fonctionne sans service cloud tiers, et vos fichiers restent sur votre serveur.
@@ -62,7 +62,7 @@ Il existe en **deux versions**, avec la même interface et les mêmes fonctions 
 
 **Docker / Portainer**, voir [node/README.md](node/README.md). Une image est publiée automatiquement (amd64 + arm64) :
 ```
-ghcr.io/xeros59/drive-ticeconnect:latest
+ghcr.io/ticeconnect-dev/drive-ticeconnect:latest
 ```
 ```bash
 cd node

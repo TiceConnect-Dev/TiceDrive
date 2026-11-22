@@ -14,7 +14,7 @@ Pour un hébergement PHP classique, utilisez plutôt la [version PHP](../php/).
 À chaque modification du dossier `node/` sur la branche `main`, une image est construite automatiquement par GitHub Actions et publiée pour **amd64 et arm64** (PC, serveur, Raspberry Pi) :
 
 ```
-ghcr.io/xeros59/drive-ticeconnect:latest
+ghcr.io/ticeconnect-dev/drive-ticeconnect:latest
 ```
 
 Les étiquettes disponibles sont `latest` (dernière version de `main`), `x.y.z` et `x.y` (versions publiées avec un tag `vx.y.z`) et `sha-xxxxxxx` (un commit précis).
